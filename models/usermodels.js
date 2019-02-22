@@ -10,26 +10,49 @@ function userlogin(tbl_nm, data, cb) {
     })
 }
 
-function userregister(tbl_nm, data, verification_key, dp, cb) {
+function userregister(tbl_nm, email, otp, cb) {
     //var query = "insert into " + tbl_nm + " values(NULL,'" + data.nm + "','" + data.unm + "','" + data.pass + "','" + data.address + "','" + data.mob + "','" + data.city + "','" + data.gender + "','user',0);"
     db.collection(tbl_nm).find().sort({ 'id': -1 }).limit(1).toArray(function (err, result1) {
         if (err)
             console.log(err)
         else {
-            db.collection(tbl_nm).find({ "email": data.email }).toArray(function (err, result2) {
+            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, result2) {
                 if (result2.length > 0) {
+                    db.collection(tbl_nm).update({ "email": email }, { $set: { "otp": otp } }, function (err, result) {
+                        if (err)
+                            console.log(err)
+                        else {
+                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                                if (err) {
+                                    console.log(err)
+                                }
+                                else {
+                                    cb(result, res)
+                                }
+                            })
+                        }
+                    })
                     cb(false)
                 }
                 else {
+                    data = {}
                     data['id'] = result1[0].id + 1
-                    data['status'] = 0
-                    data['verification_key'] = verification_key
-                    data['dp'] = dp
+                    data['email'] = email
+                    data['otp'] = otp
                     db.collection(tbl_nm).insertOne(data, function (err, result) {
                         if (err)
                             console.log(err)
-                        else
-                            cb(result)
+                        else {
+                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                                if (err) {
+                                    console.log(err)
+                                }
+                                else {
+                                    cb(result, res)
+                                }
+                            })
+                        }
+
                     })
                 }
 
@@ -77,8 +100,8 @@ function createWorkspace(tbl_nm, data, cb) {
 
 function workspaceAccept(mid, uid, cb) {
     //var query = "update register set status=1 where unm='" + emailid + "';"
-    u_id=uid
-    db.collection('workspace').update({'users': {u_id :{'m_id':mid}}}, { $set: { 'status': 1 } }, function (err, result) {
+    u_id = uid
+    db.collection('workspace').update({ 'users': { u_id: { 'm_id': mid } } }, { $set: { 'status': 1 } }, function (err, result) {
         if (err)
             console.log(err)
         else {
