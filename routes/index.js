@@ -11,62 +11,43 @@ router.get('/', function (req, res, next) {
   res.render('index');
 });
 
+/* GET register page. */
 
-router.all("/register/:email", function (req, res, next) {
-  if (req.method == "GET") {
+router.all("/register", function (req, res, next) {
+  
     var otp = otpGenerator.generate(6, { alphabets: false, specialChars: false, upperCase: false, digits: true });
-    console.log(otp)
-    email = req.params.email
-    usermodels.userregister("register", email, otp, function (result) {
+    var email = req.body.email
+    
+   // var photo = req.files.dp
+   // var dp = randomstring.generate() + "-" + photo.name
+   // var des = path.join(__dirname, "../public/uploads", dp)
+    usermodels.userregister("register", email, otp, function (result,data) {
       if (result) {
+        res.setHeader('Content-Type', 'text/plain');
+        res.send(JSON.stringify(data) )
+         res.render("register", { "result": JSON.stringify(data) })
         msg = "Your Otp is :" + otp
         sub = "OTP for Secure Sanchar"
-        mymail.sendmail(email, msg, sub, function (result, data) {
+        mymail.sendmail(email, msg, sub, function (result) {
           if (result) {
-            res.render("verification", { "result": data })
+            console.log(data)
+            
+           
           }
           else {
-            console.log(error)
-            res.render("verification", { "result": "user registeration failed HERE...." })
+            res.render("register", { "result": "mail not send HERE...." })
           }
         })
       }
       else
-        res.render("register", { "result": "user registeration failed...." })
+        res.render("register", { "result": JSON.stringify(data)})
     })
+
   }
-  else {
-    var data = req.body
-    var photo = req.files.dp
-    var dp = randomstring.generate() + "-" + photo.name
-    var des = path.join(__dirname, "../public/uploads", dp)
-    photo.mv(des, function (error) {
-      if (error) {
-        console.log(error)
-      }
-      else {
-        usermodels.userregister("register", data, verification_key, dp, function (result) {
-          if (result) {
-            url = "http://localhost:3000/userauthentication/" + verification_key
-            mymail.sendmail(data.email, url, function (result) {
-              if (result) {
-                res.render("register", { "result": data })
-              }
-              else {
-                console.log(error)
-                res.render("register", { "result": "user registeration failed HERE...." })
-              }
-            })
-          }
-          else
-            res.render("register", { "result": "user registeration failed...." })
-        })
-      }
-    })
-  }
-})
+)
 
 
+/*authentication after register
 
 router.get('/userauthentication/:verificationkey', function (req, res, next) {
   console.log(req.params.verificationkey)
@@ -79,10 +60,10 @@ router.get('/userauthentication/:verificationkey', function (req, res, next) {
       res.redirect("/register")
   })
 });
+*/
 
 
-
-
+/* login
 router.all('/login', function (req, res, next) {
 
   if (req.method == 'GET')
@@ -100,9 +81,13 @@ router.all('/login', function (req, res, next) {
     })
   }
 });
+*/
+router.get('/home', function (req, res, next) {
+  res.render('home');
+});
 
 
-
+/*create workspace */
 
 router.all("/createWorkspace", function (req, res, next) {
   if (req.method == "GET") {
@@ -119,12 +104,12 @@ router.all("/createWorkspace", function (req, res, next) {
         console.log(error)
       }
       else {
-        usermodels.createWorkspace("workspace", data, function (result) {
+        usermodels.createWorkspace("workspace", data, function (result,wid) {
           if (result) {
             i = 1
             key = "u_" + i
             while (data[key]) {
-              url = "http://localhost:3000/sendEmail/" + data[key] + "/" + key
+              url = "http://localhost:3000/sendEmail/" + data[key] + "/" + key+"/"+wid
               mymail.sendmail(data[key], url, function (result) {
                 if (!result) {
                   console.log(error)
@@ -144,10 +129,14 @@ router.all("/createWorkspace", function (req, res, next) {
   }
 })
 
-router.get('/sendEmail/:mid/:uid', function (req, res, next) {
+/* workspace approve*/
+
+router.get('/sendEmail/:mid/:uid/:wid', function (req, res, next) {
   mid = req.params.mid
   u_id = req.params.uid
-  usermodels.workspaceAccept(mid, u_id, function (result) {
+  w_id=req.params.wid
+  console.log(w_id);
+  usermodels.workspaceAccept(mid, u_id,w_id, function (result) {
     if (result) {
       res.render("login")
     }
@@ -155,6 +144,33 @@ router.get('/sendEmail/:mid/:uid', function (req, res, next) {
       res.redirect("/register")
   })
 });
+
+/* create private chat */
+router.all("/createprivatechat", function (req, res, next) {
+  if (req.method == "GET") {
+    res.render("createprivatechat", { "result": "" })
+  }
+  else {
+    var u2 = req.body.user2
+    usermodels.createprivatechat("priavtechat", u2, function (result) {
+          if (result) {
+            url = "http://localhost:3000/cnfrmmail/" + u2
+              mymail.sendmail(u2, url, function (result) {
+                if (!result) {
+                  console.log(error)
+                  res.render("createprivatechat", { "result": u2 + " mail not sent" })
+                }
+              })
+            
+            res.render("home", { "result": "start chat..." })
+          }
+          else
+            res.render("home", { "result": "not posssible" })
+        })
+      
+    
+  }
+})
 
 
 
