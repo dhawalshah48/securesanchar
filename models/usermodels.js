@@ -14,13 +14,13 @@ function userregister(tbl_nm, email, otp, cb) {
                         if (err)
                             console.log(err)
                         else {
-                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res2) {
                                 if (err) {
                                     console.log(err)
                                 }
                                 else {
-                                    console.log(res)
-                                    cb(result, res)
+                                  //  console.log(res2)
+                                    cb(result, res2)
                                 }
                             })
                         }
@@ -36,12 +36,12 @@ function userregister(tbl_nm, email, otp, cb) {
                         if (err)
                             console.log(err)
                         else {
-                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, result3) {
                                 if (err) {
                                     console.log(err)
                                 }
                                 else {
-                                    cb(result, res)
+                                    cb(result, result3)
                                 }
                             })
                         }
@@ -80,24 +80,47 @@ function userlogin(tbl_nm, data, cb) {
 }
 */
 
+function add(tbl_nm, data,dp, cb) {
+    if(data.org_name==null)
+     {data.org_name=""}
+    if(data.org_designation==null)
+    {data.org_designation=""}
+    
+    db.collection(tbl_nm).update({"id":parseInt(data.id)},{$set: { "name":data.name,"org_name":data.org_name,"org_designation":data.org_designation,"dp":dp }},function(err,result){
+        if(err)
+        console.log(err)
+        else
+        cb(result)
+
+    })}
+
+
 /* create wprkspace*/
 
 
-function createWorkspace(tbl_nm, data, cb) {
+function createWorkspace(tbl_nm, data,dp, cb) {
+    if(data.description==null)
+    data.description=""
     db.collection(tbl_nm).find().sort({ 'w_id': -1 }).limit(1).toArray(function (err, result1) {
         if (err)
             console.log(err)
         else {
 /* admin id needed to change*/
-            data1 = { "w_id": result1[0].w_id + 1, "w_name": data.w_name, "w_info": { "creation_date": data.creation_date, "description": data.description, "icon": data.icon }, "admin_id": 0 }
+            data1 = { "w_id": result1[0].w_id + 1, "w_name": data.w_name, "w_info": { "creation_date": data.creation_date, "description": data.description, "dp": dp }, "admin_id": data.id }
             var wid=data1.w_id
             data1.users=[]
             let users = data['user']
             for(var i = 0; i < users.length; i++) 
             {   if(user[i]!="")
-                data1["users"].push({"email":users[i],"status":0})
-                
-            }  
+                {db.collection(register).find({ "email": user[i] }).toArray(function (err, result3){
+                    if(err)
+                    console.log(err)
+                    else
+                    data1["users"].push({"uid":result3.id,"status":0})
+                })
+
+                }
+             }  
            
             /*
             var wid=data1.w_id
@@ -124,15 +147,24 @@ function createWorkspace(tbl_nm, data, cb) {
 
 /* workspace accept*/
 
-function workspaceAccept(mid, uid,wid, cb) {
-         db.collection('workspace').update({ 'users': {u_id: { 'm_id': mid } } }, { $set: { 'status': 1 } }, function (err, result) {
-        if (err)
+function workspaceAccept(email,wid, cb) {
+    db.collection(register).find({ "email": email }).toArray(function (err, result1){
+        if(err)
+        console.log(err)
+        else
+        {
+            db.collection('workspace').update({ "w_id":wid,"users.uid":result1.id }, { $set: { 'users.status': 1 } }, function (err, result) {
+                if (err)
             console.log(err)
-        else {
+            else {
             cb(result)
+             }
+             })
+        
         }
     })
-    db.collection("workspace").find({'w_id':parseInt(wid)},{projection:{"user":1}}).toArray(function (err, result2){
+}
+   /* db.collection("workspace").find({'w_id':parseInt(wid)},{projection:{"user":1}}).toArray(function (err, result2){
         if(err)
         console.log(err)
         else{
@@ -140,18 +172,31 @@ function workspaceAccept(mid, uid,wid, cb) {
             console.log(dat)
         }
     })
+    */
     
-}
 
 
+/*search private chat*/
+function search(tbl_nm,email, cb) {
+    db.collection(tbl_nm).find({ "email":{$regex: email } },{"_id":0,"email":1,"id":1}).toArray(function (err, result1){
+        if(err)
+        console.log(err)
+        else
+        {
+           cb(result1)
+        
+        }
+    })}
+    
 
-function createprivatechat(tbl_nm, u2, cb) {
+
+function createprivatechat(tbl_nm, data, cb) {
     db.collection(tbl_nm).find().sort({ 'p_id': -1 }).limit(1).toArray(function (err, result1) {
         if (err)
             console.log(err)
         else {
 /* admin id needed to change*/
-            data1 = { "p_id": result1[0].p_id + 1,  "between": { "u_1": "pratikshagupta789@gmail.com", "u2":u2}, "status": 0 }
+            data1 = { "p_id": result1[0].p_id + 1,  "between": { "u_1": data.u1, "u2":data.u2}, "status": 0 }
             db.collection(tbl_nm).insertOne(data1, function (err, result) {
                 if (err)
                     console.log(err)
@@ -163,4 +208,4 @@ function createprivatechat(tbl_nm, u2, cb) {
     })
 }
 
-module.exports = { "createprivatechat":createprivatechat,"workspaceAccept": workspaceAccept, "createWorkspace": createWorkspace, "userregister": userregister }
+module.exports = {search:search, add:add,createprivatechat:createprivatechat,workspaceAccept: workspaceAccept, createWorkspace: createWorkspace, userregister: userregister }

@@ -5,11 +5,19 @@ var path = require("path")
 var randomstring = require("randomstring")
 var mymail = require("../models/mymail")
 var otpGenerator = require("otp-generator")
+var io = require('socket.io')()
+
 
 /* GET home page. */
 router.get('/', function (req, res, next) {
   res.render('index');
 });
+
+
+
+var us1 = null;
+var us2 = null;
+
 
 /* GET register page. */
 
@@ -17,32 +25,33 @@ router.all("/register", function (req, res, next) {
   
     var otp = otpGenerator.generate(6, { alphabets: false, specialChars: false, upperCase: false, digits: true });
     var email = req.body.email
-    
+  
    // var photo = req.files.dp
    // var dp = randomstring.generate() + "-" + photo.name
    // var des = path.join(__dirname, "../public/uploads", dp)
     usermodels.userregister("register", email, otp, function (result,data) {
       if (result) {
-        res.setHeader('Content-Type', 'text/plain');
-        res.send(JSON.stringify(data) )
-         res.render("register", { "result": JSON.stringify(data) })
+        res.send(JSON.stringify(data[0]) )
+       
         msg = "Your Otp is :" + otp
         sub = "OTP for Secure Sanchar"
         mymail.sendmail(email, msg, sub, function (result) {
           if (result) {
             console.log(data)
-            
+          
            
           }
           else {
-            res.render("register", { "result": "mail not send HERE...." })
+            res.send(false)
           }
         })
+       
       }
-      else
-        res.render("register", { "result": JSON.stringify(data)})
+      else{
+        res.send(false)
+      }
+        
     })
-
   }
 )
 
@@ -81,79 +90,110 @@ router.all('/login', function (req, res, next) {
     })
   }
 });
-*/
+
 router.get('/home', function (req, res, next) {
   res.render('home');
 });
+*/
+
+/* add detail after register*/
+router.all("/add",function(req,res,next){
+var data=req.body
+var photo = req.files.dp
+if (photo!= null) {
+  dp = randomstring.generate() + "-" + photo.name
+  var des = path.join(__dirname, "../public/uploads", dp)
+  photo.mv(des, function (error) {
+    if (error)
+      console.log(error)
+  })
+}
+else
+dp=null
+
+usermodels.add("register",data,dp,function(result){
+if(result)
+res.send({"result":result})
+else
+res.send({"result":result})
+
+})
+})
+
 
 
 /*create workspace */
 
 router.all("/createWorkspace", function (req, res, next) {
-  if (req.method == "GET") {
-    res.render("createWorkspace", { "result": "" })
-  }
-  else {
-    var data = req.body
-    var photo = req.files.icon
-    var icon = randomstring.generate() + "-" + photo.name
-    var des = path.join(__dirname, "../public/uploads", icon)
-    data["icon"] = icon
-    photo.mv(des, function (error) {
-      if (error) {
-        console.log(error)
-      }
-      else {
-        usermodels.createWorkspace("workspace", data, function (result,wid) {
+   var data = req.body
+    var photo = req.files.dp
+    if (photo!= null) {
+      dp = randomstring.generate() + "-" + photo.name
+      var des = path.join(__dirname, "../public/uploads", dp)
+      photo.mv(des, function (error) {
+        if (error)
+          console.log(error)
+      })
+    }
+    else
+    {dp=null}
+
+      usermodels.createWorkspace("workspace", data,dp, function (result,wid) {
           if (result) {
-            i = 1
-            key = "u_" + i
-            while (data[key]) {
-              url = "http://localhost:3000/sendEmail/" + data[key] + "/" + key+"/"+wid
-              mymail.sendmail(data[key], url, function (result) {
-                if (!result) {
-                  console.log(error)
-                  res.render("createWorkspace", { "result": data[key] + " mail not sent" })
-                }
-              })
-              i++
-              key = "u_" + i
+            res.send({"result":result,"wid":wid})
+            users = data['user']
+            for(var i = 0; i < users.length; i++) 
+            {   if(user[i]!="")
+               {
+                url = "http://localhost:3000/sendEmail/" + user[i] +"/"+wid
+                mymail.sendmail(user[i], url, function (result) {
+                  if (!result) {
+                    console.log(error)
+                  }
+                })
+               }
+            }  
             }
-            res.render("home", { "result": "workspace is created...." })
-          }
           else
-            res.render("createWorkspace", { "result": "workspace not created" })
+          res.send({"result":result,"wid":""})
         })
-      }
+      
     })
-  }
-})
+
+
 
 /* workspace approve*/
 
-router.get('/sendEmail/:mid/:uid/:wid', function (req, res, next) {
-  mid = req.params.mid
-  u_id = req.params.uid
-  w_id=req.params.wid
-  console.log(w_id);
-  usermodels.workspaceAccept(mid, u_id,w_id, function (result) {
+router.get('/sendEmail/:email/:wid', function (req, res, next) {
+ email = req.params.email
+  wid=req.params.wid
+  usermodels.workspaceAccept(email,wid, function (result) {
     if (result) {
-      res.render("login")
+      res.send({"result":result})
     }
     else
-      res.redirect("/register")
+    res.send({"result":result})
   })
 });
 
+/* search private chat*/
+router.all("/search",function(req,res,next){
+  var email=req.body.email
+  usermodels.search("register",email,function(result)
+  {if(result)
+    res.send({"result":result})
+    else
+    res.send({"result":false})
+
+  })
+})
+
 /* create private chat */
 router.all("/createprivatechat", function (req, res, next) {
-  if (req.method == "GET") {
-    res.render("createprivatechat", { "result": "" })
-  }
-  else {
-    var u2 = req.body.user2
-    usermodels.createprivatechat("priavtechat", u2, function (result) {
+    var data = req.body
+    usermodels.createprivatechat("priavtechat", data, function (result) {
           if (result) {
+            res.send({"result":result})
             url = "http://localhost:3000/cnfrmmail/" + u2
               mymail.sendmail(u2, url, function (result) {
                 if (!result) {
@@ -169,7 +209,7 @@ router.all("/createprivatechat", function (req, res, next) {
         })
       
     
-  }
+  
 })
 
 

@@ -25,7 +25,50 @@ var server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
+ 
+var io = require('socket.io')(server);
+var us1 = null;
+var us2 = null;
+io.on('connection', function(socket)
+{
+	console.log("A user Connected");
+	socket.on('disconnect', function(socket)
+	{
+		console.log("A user disconnected");
+	});
+	
+	socket.on('messageFromClient', function(data)
+	{
+		io.emit('messageViaServer', {encMessage: data.encMessage});
+		console.log(data.encMessage);
+  });
+  
+  socket.on('msg', function(data){
+    console.log(data);
+  })
+
+  socket.on('fromClientPublicKey', function(data)
+  {
+    if(us1==null) 
+    {
+      us1 = req.body.pkey;
+      io.emit('youAreTheOne', {});
+    }
+    else 
+    {
+      us2 = req.body.pkey;
+      io.emit('publicKeysLeLo', {keys: [us1, us2]});
+      console.log([us1, us2]);
+    }
+  })
+});
+
+
+//----------------------- GET PUBLIC KEY OF USER ----------------------------
+
+
 server.listen(port);
+
 server.on('error', onError);
 server.on('listening', onListening);
 
