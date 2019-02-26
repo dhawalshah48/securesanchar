@@ -95,25 +95,41 @@ function addDetail(tbl_nm, data, cb) {
         if (err)
             console.log(err)
         else {
-            db.collection("workspace").find({ "users.uid": data.id ,"users.status":1}, { "_id": 0, "w_id": 1,"w_name":1 }).toArray(function (err, result1) {
+            db.collection("workspace").find({ "users.uid": data.id ,"users.status":1}, { "_id": 0 }).toArray(function (err, result1) {
                 if (err) {
                     console.log(err)
                 }
                 else {
-                    db.collection("privatechat").find({$or:[{ "between.u1": data.id },{"between.u2":data.id}]}, { "_id": 0, "publicKey": 1 }).toArray(function (err, result) {
-                        if (err) {
-                            console.log(err)
+                    wid=[]
+                    users = []
+                    workspace=[]
+                    for(i in result1){
+                        wid.append(result1.w_id);
+                        for (j in result1.users){
+                            if(result1.status==1){
+                                db.collection("register").find({"id":result1.u_id},{"_id":0,"publicKey":0,"otp":0}).toArray(function(err,user){
+                                    if(err){
+                                        console.log(err)
+                                    }
+                                    else{
+                                        users.append(user)
+                                    }
+                                })
+                            }
                         }
-                        else {
-                
-                            cb(result)
-                        }
-                    })
+                        result2.append({"w_id":result1.wid,"users":users})
+                    }
+                }
+            })
+            db.collection("privatechat").find({"between.u1":data.id, "status":1},{"_id":0}).toArray(function(err,pc){
+                if(err){
+                    console.log(err)
+                }
+                else{
                     
                 }
             })
-
-            cb(result)
+            cb(result2)
         }
     })
 }
@@ -243,7 +259,7 @@ function createprivatechat(tbl_nm, data, cb) {
         if (err)
             console.log(err)
         else {
-            data1 = { "p_id": result1[0].p_id + 1, "between": { "u1": data.u1, "u2": data.u2 }, "status": 0 }
+            data1 = { "0p_id": result1[0].p_id + 1, "between": { "u1": data.u1, "u2": data.u2 }, "status": 0 }
             db.collection(tbl_nm).insertOne(data1, function (err, result) {
                 if (err)
                     console.log(err)
@@ -254,7 +270,16 @@ function createprivatechat(tbl_nm, data, cb) {
                             db.collection("register").find({ "id": data.u2 }).toArray(function (err, result3) {
                                 if (err) { }
                                 else {
-                                    cb(result, result2.email, result3.email)
+                                    data2 = { "p_id": result1[0].p_id + 2, "between": { "u1": data.u2, "u2": data.u1 }, "status": 0 }
+                                    db.collection(tblnm).insertOne(data2,function(err,result4){
+                                        if(err)
+                                        {console.log(err)}
+                                        else{
+                                            cb(result, result2.email, result3.email)
+                                        }
+                                    })
+
+                                    
                                 }
                             }
                             )
@@ -271,39 +296,19 @@ function createprivatechat(tbl_nm, data, cb) {
 
 /* private chat accept*/
 
-function privateAccept(tbl_nm, data, cb) {
-    db.collection(tbl_nm).find({ "p_id": data.p_id }).sort({ 'p_id': -1 }).limit(1).toArray(function (err, result1) {
-        if (err)
-            console.log(err)
-        else {
-            data1 = { "p_id": result1[0].p_id + 1, "between": { "u1": data.u1, "u2": data.u2 }, "status": 0 }
-            db.collection(tbl_nm).insertOne(data1, function (err, result) {
-                if (err)
-                    console.log(err)
-                else {
-                    db.collection("register").find({ "id": data.u1 }).toArray(function (err, result2) {
-                        if (err) { }
-                        else {
-                            db.collection("register").find({ "id": data.u2 }).toArray(function (err, result3) {
-                                if (err) { }
-                                else {
-                                    cb(result, result2.email, result3.email)
-                                }
-                            }
-                            )
-                        }
-                    })
-
-
-                }
-            })
-        }
-    })
+function privateAccept(u1, u2, cb) {
+    
     db.collection('privatechat').updateOne({ $and: [{ "between.u1": u1, "between.u2": u2 }] }, { $set: { 'status': 1 } }, function (err, result) {
         if (err)
             console.log(err)
         else {
-            cb(result)
+            db.collection('privatechat').updateOne({ $and: [{ "between.u1": u2, "between.u2": u1 }] }, { $set: { 'status': 1 } }, function (err, result1){
+                if(err)
+                console.log(err)
+                else
+                cb(result)
+            })
+           
         }
     })
 }

@@ -139,7 +139,7 @@ router.all("/createWorkspace", function (req, res, next) {
 
   usermodels.createWorkspace("workspace", data, dp, function (result, wid) {
     if (result) {
-      res.send({ "result": result, "wid": wid })
+      res.send({ "result": true, "wid": wid })
       users = data['user']
       sub = "cnfrmation mail"
       from = 'securesanchar.hexane@gmail.com'
@@ -166,13 +166,13 @@ router.all("/createWorkspace", function (req, res, next) {
 router.get('/sendEmail/:email/:wid', function (req, res, next) {
   email = req.params.email
   wid = req.params.wid
-  result = ""
+  result = true
   usermodels.workspaceAccept(email, wid, function (result) {
     if (result) {
-      result = result
+      result = true
     }
     else
-      result = result
+      result =false
   })
   res.send({ "result": result })
 });
@@ -180,12 +180,12 @@ router.get('/sendEmail/:email/:wid', function (req, res, next) {
 /* search private chat*/
 router.all("/search", function (req, res, next) {
   var email = req.body.email
-  result = ""
+  result = true
   usermodels.search("register", email, function (result) {
     if (result)
-      result = result
+      result = true
     else
-      result = result
+      result = false
 
   })
   res.send({ "result": result })
@@ -196,7 +196,7 @@ router.all("/createprivatechat", function (req, res, next) {
   var data = req.body
   usermodels.createprivatechat("priavtechat", data, function (result, from, to) {
     if (result) {
-      res.send({ "result": result })
+      res.send({ "result": true })
       sub = "cnfrmation for private chat"
       url = "http://localhost:3000/confirmemail/" + data.u1 + "/" + data.u2
       mymail.sendmail(from, to, sub, url, function (result) {
@@ -215,13 +215,13 @@ router.all("/createprivatechat", function (req, res, next) {
 router.get('/confirmemail/:u1/:u2', function (req, res, next) {
   u1 = req.params.u1
   u2 = req.params.u2
-  result = ""
+  result = true
   usermodels.privateAccept(u1, u2, function (result) {
     if (result) {
-      result = result
+      result =true
     }
     else
-      result = result
+      result = false
   })
   res.send({ "result": result })
 });
