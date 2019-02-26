@@ -7,6 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('secure:server');
 var http = require('http');
+var usermodels = require("../models/usermodels")
 
 /**
  * Get port from environment and store in Express.
@@ -27,11 +28,52 @@ var server = http.createServer(app);
 
  
 var io = require('socket.io')(server);
-var us1 = null;
-var us2 = null;
+var onlineUsers = []
 io.on('connection', function(socket)
 {
 	console.log("A user Connected");
+	
+	socket.on('connected', function(data)
+	{
+		socket.join(data.userId); // Add user to his individual Room !
+		console.log(data);
+	});
+	
+	socket.on('fromClientPublicKey', function(data)
+	{
+		var userId = data.userId;
+		var email = data.email;
+		var publicKey = data.publicKey;
+		
+		if(!onlineUsers.some(e => e.email == email)){
+			usermodels.addKey("register",data,function(result){
+				//if(result)
+				//console.log(result)
+
+			})
+			
+			//----Add the public key to the user with corresponding email if user already registered----
+			
+			onlineUsers.push({email: email, socket: socket, publicKey: publicKey}); 
+		}
+		console.log(data);
+	});
+	
+	socket.on('sendIndividualMessage', function(data)
+
+	{	console.log(data)	
+		usermodels.getKey("register",data,function(result){
+			console.log(result)
+				console.log(result[0].publicKey)
+		socket.emit('publicKeyOfOtherUser', {publicKey: result[0].publicKey});
+		
+
+	})
+		//---------------- Get Public Key of the user we want to send Message to -------------
+		
+	});
+	
+	
 	socket.on('disconnect', function(socket)
 	{
 		console.log("A user disconnected");
@@ -39,29 +81,27 @@ io.on('connection', function(socket)
 	
 	socket.on('messageFromClient', function(data)
 	{
-		io.emit('messageViaServer', {encMessage: data.encMessage});
-		console.log(data.encMessage);
-  });
-  
-  socket.on('msg', function(data){
-    console.log(data);
-  })
+		
+		var toUserId = data.toUserId;
+		var toEmail = data.toEmail;
+		var fromUserId = data.fromUserId;
+		var message = data.message;
+		var key=data.key;
+	/*	usermodels.insertMessage("privatechat",data,function(result){
 
-  socket.on('fromClientPublicKey', function(data)
-  {
-    if(us1==null) 
-    {
-      us1 = req.body.pkey;
-      io.emit('youAreTheOne', {});
-    }
-    else 
-    {
-      us2 = req.body.pkey;
-      io.emit('publicKeysLeLo', {keys: [us1, us2]});
-      console.log([us1, us2]);
-    }
-  })
+
+		})*/
+		//-----------------Add message to Database for the corresponding toUserId and fromUserID-----------
+		
+		io.sockets.in(toUserId).emit('messageToClient', {fromUserId: fromUserId, message: message, key:key});
+		socket.emit('messageSentToServer', {toUserId: toUserId});
+		
+		console.log(data);
+	});
 });
+
+
+
 
 
 //----------------------- GET PUBLIC KEY OF USER ----------------------------
