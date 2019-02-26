@@ -15,8 +15,10 @@
     "mongoose": "^5.4.13",
     "morgan": "~1.9.0",
     "nodemailer": "^5.1.1",
+    "nodemon": "^1.18.10",
     "otp-generator": "^1.1.0",
     "path": "^0.12.7",
-    "randomstring": "^1.1.5"
+    "randomstring": "^1.1.5",
+    "socketio": "^1.0.0"
   }
 }

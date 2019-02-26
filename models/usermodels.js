@@ -1,33 +1,26 @@
 var db = require('./conn')
 
-function userlogin(tbl_nm, data, cb) {
-    //var query = "select * from " + tbl_nm + " where unm='" + data.unm + "' and pass='" + data.pass + "' and status=1;"
-    db.collection(tbl_nm).find({ 'email': data.email, 'password': data.password, 'status': 1 }).toArray(function (err, result) {
-        if (err)
-            console.log(err)
-        else
-            cb(result)
-    })
-}
+
+/*user register table*/
 
 function userregister(tbl_nm, email, otp, cb) {
-    //var query = "insert into " + tbl_nm + " values(NULL,'" + data.nm + "','" + data.unm + "','" + data.pass + "','" + data.address + "','" + data.mob + "','" + data.city + "','" + data.gender + "','user',0);"
     db.collection(tbl_nm).find().sort({ 'id': -1 }).limit(1).toArray(function (err, result1) {
         if (err)
             console.log(err)
         else {
             db.collection(tbl_nm).find({ "email": email }).toArray(function (err, result2) {
                 if (result2.length > 0) {
-                    db.collection(tbl_nm).update({ "email": email }, { $set: { "otp": otp } }, function (err, result) {
+                    db.collection(tbl_nm).updateOne({ "email": email }, { $set: { "otp": otp } }, function (err, result) {
                         if (err)
                             console.log(err)
                         else {
-                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                            db.collection(tbl_nm).find({ "email": email }, { "publicKey": 0, "_id": 0 }).toArray(function (err, res2) {
                                 if (err) {
                                     console.log(err)
                                 }
                                 else {
-                                    cb(result, res)
+                                    //  console.log(res2)
+                                    cb(result, res2)
                                 }
                             })
                         }
@@ -43,12 +36,12 @@ function userregister(tbl_nm, email, otp, cb) {
                         if (err)
                             console.log(err)
                         else {
-                            db.collection(tbl_nm).find({ "email": email }).toArray(function (err, res) {
+                            db.collection(tbl_nm).find({ "email": email }, { "publicKey": 0, "_id": 0 }).toArray(function (err, result3) {
                                 if (err) {
                                     console.log(err)
                                 }
                                 else {
-                                    cb(result, res)
+                                    cb(result, result3)
                                 }
                             })
                         }
@@ -60,6 +53,9 @@ function userregister(tbl_nm, email, otp, cb) {
         }
     })
 }
+
+/* user authentication after register
+
 function loginauthentication(verification_key, cb) {
     //var query = "update register set status=1 where unm='" + emailid + "';"
     db.collection('register').update({ 'verification_key': verification_key }, { $set: { 'status': 1 } }, function (err, result) {
@@ -70,14 +66,131 @@ function loginauthentication(verification_key, cb) {
         }
     })
 }
+*/
 
-function createWorkspace(tbl_nm, data, cb) {
+/* user login 
+function userlogin(tbl_nm, data, cb) {
     //var query = "select * from " + tbl_nm + " where unm='" + data.unm + "' and pass='" + data.pass + "' and status=1;"
+    db.collection(tbl_nm).find({ 'email': data.email, 'password': data.password, 'status': 1 }).toArray(function (err, result) {
+        if (err)
+            console.log(err)
+        else
+            cb(result)
+    })
+}
+*/
+/*create profile details*/
+
+function addDetail(tbl_nm, data, cb) {
+    if (data.org_name == null) {
+        data.org_name = ""
+    }
+    if (data.org_designation == null) {
+        data.org_designation = ""
+    }
+    console.log(data)
+    var id = parseInt(data.id)
+    console.log(id)
+    db.collection(tbl_nm).updateOne({ "id": id }, { $set: { "name": data.name, "org_name": data.org_name, "org_designation": data.org_designation } }, function (err, result) {
+        if (err)
+            console.log(err)
+        else {
+            db.collection("workspace").find({ "users.uid": data.id ,"users.status":1}, { "_id": 0 }).toArray(function (err, result1) {
+                if (err) {
+                    console.log(err)
+                }
+                else {
+                    wid=[]
+                    users = []
+                    workspace=[]
+                    for(i in result1){
+                        wid.append(result1.w_id);
+                        for (j in result1.users){
+                            if(result1.status==1){
+                                db.collection("register").find({"id":result1.u_id},{"_id":0,"publicKey":0,"otp":0}).toArray(function(err,user){
+                                    if(err){
+                                        console.log(err)
+                                    }
+                                    else{
+                                        users.append(user)
+                                    }
+                                })
+                            }
+                        }
+                        result2.append({"w_id":result1.wid,"users":users})
+                    }
+                }
+            })
+            db.collection("privatechat").find({"between.u1":data.id, "status":1},{"_id":0}).toArray(function(err,pc){
+                if(err){
+                    console.log(err)
+                }
+                else{
+                    
+                }
+            })
+            cb(result2)
+        }
+    })
+}
+
+
+/*add public key*/
+
+function addKey(tbl_nm, data, cb) {
+    db.collection(tbl_nm).updateOne({ "email": data.email }, { $set: { "publicKey": data.publicKey } }, function (err, result) {
+        if (err)
+            console.log(err)
+        else
+            cb(result)
+
+    })
+}
+
+
+/* get public key */
+function getKey(tbl_nm, data, cb) {
+    db.collection(tbl_nm).find({ "email": data.email }, { "_id": 0, "publicKey": 1 }).toArray(function (err, result) {
+        if (err) {
+            console.log(err)
+        }
+        else {
+
+            cb(result)
+        }
+    })
+}
+
+
+/* create wprkspace*/
+
+
+function createWorkspace(tbl_nm, data, dp, cb) {
+    if (data.description == null)
+        data.description = ""
     db.collection(tbl_nm).find().sort({ 'w_id': -1 }).limit(1).toArray(function (err, result1) {
         if (err)
             console.log(err)
         else {
-            data1 = { "w_id": result1[0].w_id + 1, "w_name": data.w_name, "w_info": { "creation_date": data.creation_date, "description": data.description, "icon": data.icon }, "admin_id": 0 }
+            /* admin id needed to change*/
+            data1 = { "w_id": result1[0].w_id + 1, "w_name": data.w_name, "w_info": { "creation_date": data.creation_date, "description": data.description, "dp": dp }, "admin_id": data.id }
+            var wid = data1.w_id
+            data1.users = []
+            let users = data['user']
+            for (var i = 0; i < users.length; i++) {
+                if (user[i] != "") {
+                    db.collection(register).find({ "email": user[i] }).toArray(function (err, result3) {
+                        if (err)
+                            console.log(err)
+                        else
+                            data1["users"].push({ "uid": result3.id, "status": 0 })
+                    })
+
+                }
+            }
+
+            /*
+            var wid=data1.w_id
             i = 1
             key = "u_" + i
             data1["users"] = {}
@@ -87,26 +200,144 @@ function createWorkspace(tbl_nm, data, cb) {
                 data2[key] = { "m_id": data[key], "status": 0 }
                 i = i + 1
                 key = "u_" + i
-            }
+            }*/
             db.collection(tbl_nm).insertOne(data1, function (err, result) {
                 if (err)
                     console.log(err)
-                else
+                else {
+                    cb(result, wid)
+                }
+            })
+        }
+    })
+}
+/* workspace accept*/
+
+function workspaceAccept(email, wid, cb) {
+    db.collection(register).find({ "email": email }).toArray(function (err, result1) {
+        if (err)
+            console.log(err)
+        else {
+            db.collection('workspace').updateOne({ "w_id": wid, "users.uid": result1.id }, { $set: { "users.$.status": 1 } }, function (err, result) {
+                if (err)
+                    console.log(err)
+                else {
                     cb(result)
+                }
+            })
+        }
+    })
+}
+/* db.collection("workspace").find({'w_id':parseInt(wid)},{projection:{"user":1}}).toArray(function (err, result2){
+     if(err)
+     console.log(err)
+     else{
+         var dat=JSON.stringify(result2)
+         console.log(dat)
+     }
+ })
+ */
+
+
+
+/*search private chat*/
+function search(tbl_nm, email, cb) {
+    db.collection(tbl_nm).find({ "email": { $regex: email } }, { "_id": 0, "email": 1, "id": 1 }).toArray(function (err, result1) {
+        if (err)
+            console.log(err)
+        else {
+            cb(result1)
+
+        }
+    })
+}
+
+
+/*CREATE PRIVATE CHAT*/
+function createprivatechat(tbl_nm, data, cb) {
+    db.collection(tbl_nm).find().sort({ 'p_id': -1 }).limit(1).toArray(function (err, result1) {
+        if (err)
+            console.log(err)
+        else {
+            data1 = { "0p_id": result1[0].p_id + 1, "between": { "u1": data.u1, "u2": data.u2 }, "status": 0 }
+            db.collection(tbl_nm).insertOne(data1, function (err, result) {
+                if (err)
+                    console.log(err)
+                else {
+                    db.collection("register").find({ "id": data.u1 }).toArray(function (err, result2) {
+                        if (err) { }
+                        else {
+                            db.collection("register").find({ "id": data.u2 }).toArray(function (err, result3) {
+                                if (err) { }
+                                else {
+                                    data2 = { "p_id": result1[0].p_id + 2, "between": { "u1": data.u2, "u2": data.u1 }, "status": 0 }
+                                    db.collection(tblnm).insertOne(data2,function(err,result4){
+                                        if(err)
+                                        {console.log(err)}
+                                        else{
+                                            cb(result, result2.email, result3.email)
+                                        }
+                                    })
+
+                                    
+                                }
+                            }
+                            )
+                        }
+                    })
+
+
+                }
             })
         }
     })
 }
 
-function workspaceAccept(mid, uid, cb) {
-    //var query = "update register set status=1 where unm='" + emailid + "';"
-    u_id = uid
-    db.collection('workspace').update({ 'users': { u_id: { 'm_id': mid } } }, { $set: { 'status': 1 } }, function (err, result) {
+
+/* private chat accept*/
+
+function privateAccept(u1, u2, cb) {
+    
+    db.collection('privatechat').updateOne({ $and: [{ "between.u1": u1, "between.u2": u2 }] }, { $set: { 'status': 1 } }, function (err, result) {
         if (err)
             console.log(err)
         else {
-            cb(result)
+            db.collection('privatechat').updateOne({ $and: [{ "between.u1": u2, "between.u2": u1 }] }, { $set: { 'status': 1 } }, function (err, result1){
+                if(err)
+                console.log(err)
+                else
+                cb(result)
+            })
+           
         }
     })
 }
-module.exports = { "workspaceAccept": workspaceAccept, "createWorkspace": createWorkspace, "userregister": userregister, "loginauthentication": loginauthentication, "userlogin": userlogin }
+
+/* insert messages in private chat*/
+function insertMessage(tbl_nm, data, cb) {
+    db.collection(tbl_nm).find({ "p_id": data.p_id }).sort({ "id": -1 }).limit(1).toArray(function (err, result) {
+        if (err) {
+            console.log(err)
+        }
+        else {
+            if (result == null) {
+                data["message"][0] = [{"msg_id":1}]
+            }
+            else {
+                data["message"][data["message"].length] = {"msg_id":result.id + 1}
+            }
+            db.collection(tbl_nm).updateOne({ "p_id": data.p_id }, { $set: {"message.$.msg_id":""} }, function (err, result) {
+                if (err) {
+                    console.log(err)
+                }
+                else {
+                    cb(result)
+                }
+            })
+        }
+    })
+}
+
+
+
+module.exports = { insertMessage: insertMessage, getKey: getKey, addKey: addKey, privateAccept: privateAccept, search: search, addDetail: addDetail, createprivatechat: createprivatechat, workspaceAccept: workspaceAccept, createWorkspace: createWorkspace, userregister: userregister }
